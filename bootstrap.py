@@ -14,5 +14,5 @@ class Bootstrap():
         for i in range(0,len(modules)):
             filename = modules[i];
             name = modules[i].replace(".py","")
-            print("Found module: ",name)
+            print("Found module: {0}".format(name))
             self.Modules[name] = imp.load_source(name,"./modules/" + filename);

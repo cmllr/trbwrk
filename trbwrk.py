@@ -4,4 +4,7 @@ from bootstrap import Bootstrap
 
 b = Bootstrap()
   
-print(b.Modules["mailAnalyse"].get_mails(credentials.SERVER,credentials.PORT,credentials.EMAIL,credentials.PASSWORD,credentials.FOLDER))
+mails = b.Modules["MailHoneypot"].getMails(credentials.SERVER,credentials.PORT,credentials.EMAIL,credentials.PASSWORD,credentials.FOLDER)
+
+
+pritn(len(mails))
