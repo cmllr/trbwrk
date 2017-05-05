@@ -108,7 +108,7 @@ def getServer(message):
     return results
 
 def getMails(server,port,emailaddr,password,folder):
-
+    global b
     mails = []
     mail = imaplib.IMAP4_SSL(server,port)
     mail.login(emailaddr,password)

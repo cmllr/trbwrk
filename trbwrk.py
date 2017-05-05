@@ -4,6 +4,7 @@ import json
 import credentials
 from bootstrap import Bootstrap
 
+global b
 b = Bootstrap()
   
 mails = b.Modules["MailHoneypot"].getMails(credentials.SERVER,credentials.PORT,credentials.EMAIL,credentials.PASSWORD,credentials.FOLDER)
@@ -12,7 +13,7 @@ extensions = {}
 domains = {}
 
 for mail in mails:
-    print(mail)
+
     mail.Links = b.Modules["LinkAnalyse"].getLinks(mail.Body)
     for link in mail.Links:
         if link in domains:
@@ -28,9 +29,10 @@ for mail in mails:
             extensions[extension] = 1
         attachments.append(at.Name)
     
-
-    cprint(attachments,"red")
-    cprint(links,"yellow")
+    if (len(mail.Links) > 0 or len(mail.Attachments) > 0):
+        print(mail)
+        cprint(attachments,"red")
+        cprint(mail.Links,"yellow")
 
 
 fp = open("./extensions.json", 'wb')		 
