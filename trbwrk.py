@@ -2,18 +2,27 @@ import time
 from termcolor import colored, cprint
 import json
 import credentials
+import sys
 from bootstrap import Bootstrap
 
 global b
 b = Bootstrap()
   
-mails = b.Modules["MailHoneypot"].getMails(credentials.SERVER,credentials.PORT,credentials.EMAIL,credentials.PASSWORD,credentials.FOLDER)
+mails = [] # b.Modules["MailHoneypot"].getMails(credentials.SERVER,credentials.PORT,credentials.EMAIL,credentials.PASSWORD,credentials.FOLDER)
+
+
+fp = open("./spam.txt")
+mail = b.Modules["MailHoneypot"].getMail(fp.read())
+mails.append(mail)
+fp.close()
+
+
+
 
 extensions = {}
 domains = {}
 
 for mail in mails:
-
     mail.Links = b.Modules["LinkAnalyse"].getLinks(mail.Body)
     for link in mail.Links:
         if link in domains:

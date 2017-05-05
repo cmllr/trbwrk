@@ -56,11 +56,11 @@ def getBody(message):
         for part in message.walk():
             mime = part.get_content_type()	
             if mime.find("text") != -1:	
-                body = part.get_payload(decode=True)
+                body = part.get_payload()
     else:
-        body = message.get_payload(decode=True) 
+        body = message.get_payload() 
 
-    return body
+    return body.replace("\n","")
         
 def getAttachments(message):
     payload = []
@@ -86,7 +86,7 @@ def getAttachments(message):
 def getServer(message):
     results = []
     headers = message.get_all("Received")
-    if (len(headers) == 0):
+    if (headers == None or len(headers) == 0):
         return "";
     
     for header in headers:
@@ -103,9 +103,25 @@ def getServer(message):
                             results.append(m)
         except ValueError:
             pass
+        except TypeError:
+            pass
 
 
     return results
+
+def getMail(raw):
+    msg = email.message_from_string(raw)
+    got = Mail()
+    got.Subject = getHeader(msg,"Subject")
+    got.Sender = Sender(getHeader(msg,"From"))
+    got.Receiver = getHeader(msg,"To")
+    got.Body = getBody(msg)
+    got.Mailer = getHeader(msg,"X-Mailer")
+    got.MessageID = getHeader(msg,"Message-Id")
+    got.Attachments = getAttachments(msg)
+    got.Server = getServer(msg)
+    return got
+
 
 def getMails(server,port,emailaddr,password,folder):
     global b
@@ -117,17 +133,8 @@ def getMails(server,port,emailaddr,password,folder):
     rv, data = mail.search(None, "ALL") 
     for num in data[0].split():
             rv, data = mail.fetch(num, '(RFC822)')
-
-            msg = email.message_from_string(data[0][1])
-            got = Mail()
-            got.Subject = getHeader(msg,"Subject")
-            got.Sender = Sender(getHeader(msg,"From"))
-            got.Receiver = getHeader(msg,"To")
-            got.Body = getBody(msg)
-            got.Mailer = getHeader(msg,"X-Mailer")
-            got.MessageID = getHeader(msg,"Message-Id")
-            got.Attachments = getAttachments(msg)
-            got.Server = getServer(msg)
+            raw = data[0][1]
+            got = getMail(raw)
             mails.append(got)
 
     return mails
