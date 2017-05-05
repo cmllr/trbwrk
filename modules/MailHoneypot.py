@@ -1,5 +1,8 @@
 import imaplib
 import email
+import os
+import re
+
 from email.header import decode_header
 
 class Sender(object):
@@ -29,14 +32,12 @@ class Mail(object):
     Body=""
     Mailer=""
     MessageID=""
+    Server=[]
+    Links=[]
+
 
     def __str__(self):
-        attachmentString = "";
-        if (len(self.Attachments) > 0):
-            for at in self.Attachments:
-                attachmentString += at.Name+","
-        attachmentString = attachmentString.strip(",")
-        response = "{0} => {1}: \"{2}\" {3} attachments ({4}), ID: {5}, Mailer: {6}".format(self.Sender,self.Receiver,self.Subject,len(self.Attachments),attachmentString,self.MessageID,self.Mailer) 
+        response = "{0} => {1}: \"{2}\"".format(self.Sender,self.Receiver,self.Subject) 
         return response
         
 
@@ -82,6 +83,30 @@ def getAttachments(message):
 
     return payload
 
+def getServer(message):
+    results = []
+    headers = message.get_all("Received")
+    if (len(headers) == 0):
+        return "";
+    
+    for header in headers:
+        try:
+            if (header.startswith("from ")):
+                # is a from-header
+                index = header.index("by")
+                relevant = header[0:index]
+                # todo hostname detection
+                regex = re.compile(r"(?P<word>(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))")
+                for matches in re.findall(regex, relevant):
+                    for m in matches:
+                        if results.count(m) == -0:
+                            results.append(m)
+        except ValueError:
+            pass
+
+
+    return results
+
 def getMails(server,port,emailaddr,password,folder):
 
     mails = []
@@ -89,8 +114,7 @@ def getMails(server,port,emailaddr,password,folder):
     mail.login(emailaddr,password)
     mail.select(folder);
     
-    rv, data = mail.search(None, "ALL")    
-
+    rv, data = mail.search(None, "ALL") 
     for num in data[0].split():
             rv, data = mail.fetch(num, '(RFC822)')
 
@@ -103,5 +127,7 @@ def getMails(server,port,emailaddr,password,folder):
             got.Mailer = getHeader(msg,"X-Mailer")
             got.MessageID = getHeader(msg,"Message-Id")
             got.Attachments = getAttachments(msg)
+            got.Server = getServer(msg)
             mails.append(got)
-        
+
+    return mails
