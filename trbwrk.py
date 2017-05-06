@@ -92,6 +92,7 @@ class trbwrk():
             print("Performing deep check...")
         if self.deepCheck:
             self.doDeepCheck(mail)
+        mail.trbwrk = self.getVersion()
         return mail
     
     def doDeepCheck(self,mail):
@@ -117,6 +118,8 @@ class trbwrk():
                     self.doDeepCheck(got)
                 if (self.printHello):
                     print(got)
+                
+                got.trbwrk = self.getVersion()
                 mails.append(got)		
             
         return mails 

@@ -41,6 +41,7 @@ class Mail(object):
     MessageID=""
     Server=[]
     Links=[]
+    trbwrk=""
 
     def __str__(self):
         response = "{0} => {1}: \"{2}\"".format(self.Sender,self.Receiver,self.Subject) 
