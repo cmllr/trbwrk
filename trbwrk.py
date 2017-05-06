@@ -42,12 +42,3 @@ for mail in mails:
         print(mail)
         cprint(attachments,"red")
         cprint(mail.Links,"yellow")
-
-
-fp = open("./extensions.json", 'wb')		 
-fp.write(json.dumps(extensions))		
-fp.close()
-
-fp = open("./domains.json", 'wb')		 
-fp.write(json.dumps(domains))		
-fp.close()
