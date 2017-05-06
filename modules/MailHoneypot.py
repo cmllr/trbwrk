@@ -2,10 +2,12 @@ import imaplib
 import email
 import os
 import re
+import time
+
 
 from email.header import decode_header
 
-class Sender(object):
+class Sender():
     Name = ""
     Email = ""
 
@@ -39,6 +41,8 @@ class Mail(object):
     def __str__(self):
         response = "{0} => {1}: \"{2}\"".format(self.Sender,self.Receiver,self.Subject) 
         return response
+
+
         
 
 def getHeader(message,needle):

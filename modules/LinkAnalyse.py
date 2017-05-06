@@ -15,6 +15,10 @@ class Hyperlink(object):
     Screenshot=""
 
     def __str__(self):
+        
+        if  "Server" not in self.Headers:
+            self.Headers["Server"] = None
+
         if (self.Whois.name_servers == None):
             return "{0} (HTTP {1} {4}, {2}, {3})".format(self.Url,self.Status,self.Headers["Server"],self.Addresses,self.Screenshot);
         else:
@@ -29,15 +33,22 @@ def getRedirects(href):
     initial = Hyperlink()
     initial.Url = response.url
     initial.Status = response.status_code
-    initial.Headers = response.headers
+    initial.Headers = getPlainHeaders(response.headers)
     history.append(initial)
     for resp in response.history:
         l = Hyperlink()
         l.Url = resp.url
         l.Status = resp.status_code
-        l.Headers = resp.Headers;
+        l.Headers = getPlainHeaders(resp.headers)
         history.append(l)
     return history
+
+def getPlainHeaders(headers):
+    plain = {}
+    for header in headers.items():
+        plain[header[0]] = header[1]
+
+    return plain
 
 def getWHOIS(hostname):
     data = {}
@@ -64,23 +75,29 @@ def getScreen(url):
     driver.get(url)
     time.sleep(5)
     name = "".join(random.choice(string.lowercase) for i in range(8))
-    driver.save_screenshot('/tmp/'+name+'.png')
+    driver.save_screenshot('/tmp/screenshots/'+name+'.png')
     driver.quit()
-    return '/tmp/'+name+'.png';
+    return '/tmp/screenshots/'+name+'.png';
 
 def getLinks(body):
     links = []
     regex = re.compile(r"https?://[^ ^\"^\'^<]+")
     for match in re.findall(regex, body.replace("\n","").replace("\r","")):
         href = match;
-        history = getRedirects(href)
-        for url in history:
-            domain = urlparse.urlparse(href)
-            hostname = domain.hostname;
-            if links.count(url.Url) == 0:
-                url.Screenshot = getScreen(url.Url)
-                url.Whois = getWHOIS(hostname)
-                url.Addresses = getIP(hostname)
-                links.append(url)
-    
+        try:
+            history = getRedirects(href)
+            for url in history:
+                domain = urlparse.urlparse(href)
+                hostname = domain.hostname;
+                if links.count(url.Url) == 0:
+                    if (url.Status != 404):
+                        url.Screenshot = getScreen(url.Url)
+                    else:
+                        print("Site 404..skipping screenshot")
+                    url.Whois = getWHOIS(hostname)
+                    url.Addresses = getIP(hostname)
+                    links.append(url)
+        except:
+            print("Could not read links")
+        
     return links
