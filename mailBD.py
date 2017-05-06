@@ -1,6 +1,14 @@
 import email
 import re
+import requests 
+import urlparse
+import time
+import random
+import string
+import whois
+import dns.resolver
 from email.header import decode_header
+from selenium import webdriver
 
 # classes
 
@@ -33,6 +41,34 @@ class Mail(object):
     MessageID=""
     Server=[]
     Links=[]
+
+    def __str__(self):
+        response = "{0} => {1}: \"{2}\"".format(self.Sender,self.Receiver,self.Subject) 
+        return response
+
+class Hyperlink(object):
+    Url=""
+    Status=404
+    Whois={}
+    Headers= {}
+    Addresses=[]
+    Screenshot=""
+
+    def __str__(self):
+        
+        if  "Server" not in self.Headers:
+            self.Headers["Server"] = None
+
+        if (self.Whois.name_servers == None):
+            return "{0} (HTTP {1} {4}, {2}, {3})".format(self.Url,self.Status,self.Headers["Server"],self.Addresses,self.Screenshot);
+        else:
+            return "{0} (HTTP {1}, {7}, {8}, {9}, Location: {2}, {3} (*{4}), {5} ({6})".format(self.Url,self.Status,self.Whois.city,self.Whois.country,self.Whois.creation_date,self.Whois.name,self.Whois.emails,self.Headers["Server"],self.Addresses,self.Screenshot);
+
+    __repr__ = __str__
+
+
+
+
 
 class MailBD(object):
     """
@@ -118,3 +154,74 @@ class MailBD(object):
             except TypeError:
                 pass
         return results
+
+
+
+    def getLinks(self,body):
+        links = []
+        regex = re.compile(r"https?://[^ ^\"^\'^<]+")
+        for match in re.findall(regex, body.replace("\n","").replace("\r","")):
+            href = match;
+           # try:
+            history = self.getRedirects(href)
+            for url in history:
+                domain = urlparse.urlparse(href)
+                hostname = domain.hostname;
+                if links.count(url.Url) == 0:
+                    if (url.Status != 404):
+                        url.Screenshot = self.getScreen(url.Url)
+                    url.Whois = self.getWHOIS(hostname)
+                    url.Addresses =  self.getIP(hostname)
+                    links.append(url)
+           # except:
+             #   print("Could not read links")
+
+    def getRedirects(self, href):
+        history = []
+        response = requests.get(href)
+        initial = Hyperlink()
+        initial.Url = response.url
+        initial.Status = response.status_code
+        initial.Headers = self.getPlainHeaders(response.headers)
+        history.append(initial)
+        for resp in response.history:
+            l = Hyperlink()
+            l.Url = resp.url
+            l.Status = resp.status_code
+            l.Headers = self.getPlainHeaders(resp.headers)
+            history.append(l)
+        return history
+
+    def getPlainHeaders(self,headers):
+        plain = {}
+        for header in headers.items():
+            plain[header[0]] = header[1]
+        return plain
+    
+    def getScreen(self,href):
+        driver = webdriver.PhantomJS()
+        driver.set_window_size(1920, 1080) # set the window size that you need 
+        driver.get(href)
+        time.sleep(5)
+        name = "".join(random.choice(string.lowercase) for i in range(8))
+        driver.save_screenshot('/tmp/screenshots/'+name+'.png')
+        driver.quit()
+        return '/tmp/screenshots/'+name+'.png';
+    
+    def getWHOIS(self,hostname):
+        data = {}
+        data = whois.whois(hostname)
+        return data
+
+    def getIP(self,hostname):
+        addresses = [];
+        records = ["A","AAAA"]
+        for record in records:
+            try:
+                answers = dns.resolver.query(hostname, record)
+                for ip in answers:
+                    addresses.append(str(ip.address))
+            except:
+                pass
+
+        return addresses
