@@ -75,6 +75,12 @@ class MailBD(object):
     """
         Mail Breakdown class, downloads, parses and analyses emails
     """
+
+    trbwrkInstance = None
+
+    def __init__(self,trbwrk):
+        self.trbwrkInstance = trbwrk
+
     def getMail(self,raw):
         """ generate a Mail object from the source code and start analysis """
         msg = email.message_from_string(raw)
@@ -109,9 +115,11 @@ class MailBD(object):
                     body = part.get_payload()
         else:
             body = message.get_payload() 
-        return body.replace("\n","")
+        
+        body = body.replace("\n","")
+        return body
 
-    def getAttachments(self,message):
+    def getAttachments(self,message,addBlob=False):
         payload = []
         if (message.is_multipart()):
             for part in message.walk():
@@ -125,7 +133,8 @@ class MailBD(object):
                     if (name != None):
                         att = File()
                         att.Name = name
-                        att.Blob = content
+                        if addBlob:
+                            att.Blob = content
                         payload.append(att)
         else:
             body = message.get_payload(decode=True) 
