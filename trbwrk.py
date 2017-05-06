@@ -7,6 +7,7 @@ import credentials
 import sys
 import getopt
 import jsonpickle
+import imaplib
 
 # Units
 import mailBD
@@ -77,7 +78,7 @@ class trbwrk():
             if o in ("--raw"):
                 self.seenMail = self.parseMail(a);
             elif o in ("--honeypot"):
-                mails = b.Modules["MailHoneypot"].getMails(credentials.SERVER,credentials.PORT,credentials.EMAIL,credentials.PASSWORD,credentials.FOLDER)
+                mails = self.parseMails(credentials.SERVER,credentials.PORT,credentials.EMAIL,credentials.PASSWORD,credentials.FOLDER)
             
 
         self.printResults()
@@ -97,6 +98,28 @@ class trbwrk():
         mbd = mailBD.MailBD()
         mail.Links = mbd.getLinks(mail.Body)
 
+    def parseMails(self,server,port,emailaddr,password,folder):
+        mails = []		
+        mail = imaplib.IMAP4_SSL(server,port)		
+        mail.login(emailaddr,password)		
+        mail.select(folder);		
+                
+        rv, data = mail.search(None, "ALL") 		
+
+        mbd = mailBD.MailBD()
+        for num in data[0].split():		
+                rv, data = mail.fetch(num, '(RFC822)')		
+                raw = data[0][1]		
+                got = mbd.getMail(raw)	
+                if self.printHello and self.deepCheck:
+                    print("Performing deep check...")
+                if self.deepCheck:
+                    self.doDeepCheck(got)
+                if (self.printHello):
+                    print(got)
+                mails.append(got)		
+            
+        return mails 
     def printResults(self):
         if self.seenMail != None:
             self.output(self.seenMail)
