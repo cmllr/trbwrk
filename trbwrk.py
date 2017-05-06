@@ -78,14 +78,14 @@ class trbwrk():
             if o in ("--raw"):
                 self.seenMail = self.parseMail(a);
             elif o in ("--honeypot"):
-                mails = self.parseMails(credentials.SERVER,credentials.PORT,credentials.EMAIL,credentials.PASSWORD,credentials.FOLDER)
+                self.seenMails = self.parseMails(credentials.SERVER,credentials.PORT,credentials.EMAIL,credentials.PASSWORD,credentials.FOLDER)
             
 
         self.printResults()
 
     def parseMail(self,path):
         fp = open(path)
-        mbd = mailBD.MailBD()
+        mbd = mailBD.MailBD(self)
         mail = mbd.getMail(fp.read())
         fp.close()
         if self.printHello and self.deepCheck:
@@ -107,7 +107,7 @@ class trbwrk():
                 
         rv, data = mail.search(None, "ALL") 		
 
-        mbd = mailBD.MailBD()
+        mbd = mailBD.MailBD(self)
         for num in data[0].split():		
                 rv, data = mail.fetch(num, '(RFC822)')		
                 raw = data[0][1]		
@@ -128,15 +128,21 @@ class trbwrk():
             self.output(self.seenMail)
 
         if len(self.seenMails) > 0:
-            for mail in self.seenMails:
-                self.output(mail)
+            if self.printJSON:
+                self.output(self.seenMails)
+            else:
+                for mail in self.seenMails:
+                    self.output(mail)
     
+    def getJSON(self,what):
+        return jsonpickle.encode(what,unpicklable=False,make_refs=False)
+
     def output(self,what):
         """
             prints out a given object (as JSON)
         """
         if self.printJSON:
-            print(jsonpickle.encode(what,unpicklable=False,make_refs=False))
+            print(self.getJSON(what))
         else:
             print(what)
 
