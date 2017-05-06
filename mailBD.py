@@ -163,34 +163,37 @@ class MailBD(object):
         regex = re.compile(r"https?://[^ ^\"^\'^<]+")
         for match in re.findall(regex, body.replace("\n","").replace("\r","")):
             href = match;
-           # try:
-            history = self.getRedirects(href)
-            for url in history:
-                domain = urlparse.urlparse(href)
-                hostname = domain.hostname;
-                if links.count(url.Url) == 0:
-                    if (url.Status != 404):
-                        url.Screenshot = self.getScreen(url.Url)
-                    url.Whois = self.getWHOIS(hostname)
-                    url.Addresses =  self.getIP(hostname)
-                    links.append(url)
-           # except:
-             #   print("Could not read links")
+            try:
+                history = self.getRedirects(href)
+                for url in history:
+                    domain = urlparse.urlparse(href)
+                    hostname = domain.hostname;
+                    if links.count(url.Url) == 0:
+                        if (url.Status != 404):
+                            url.Screenshot = self.getScreen(url.Url)
+                        url.Whois = self.getWHOIS(hostname)
+                        url.Addresses =  self.getIP(hostname)
+                        links.append(url)
+            except:
+                print("Could not read links")
 
     def getRedirects(self, href):
         history = []
-        response = requests.get(href)
-        initial = Hyperlink()
-        initial.Url = response.url
-        initial.Status = response.status_code
-        initial.Headers = self.getPlainHeaders(response.headers)
-        history.append(initial)
-        for resp in response.history:
-            l = Hyperlink()
-            l.Url = resp.url
-            l.Status = resp.status_code
-            l.Headers = self.getPlainHeaders(resp.headers)
-            history.append(l)
+        try:
+            response = requests.get(href)
+            initial = Hyperlink()
+            initial.Url = response.url
+            initial.Status = response.status_code
+            initial.Headers = self.getPlainHeaders(response.headers)
+            history.append(initial)
+            for resp in response.history:
+                l = Hyperlink()
+                l.Url = resp.url
+                l.Status = resp.status_code
+                l.Headers = self.getPlainHeaders(resp.headers)
+                history.append(l)
+        except: 
+            pass
         return history
 
     def getPlainHeaders(self,headers):
@@ -200,18 +203,26 @@ class MailBD(object):
         return plain
     
     def getScreen(self,href):
-        driver = webdriver.PhantomJS()
-        driver.set_window_size(1920, 1080) # set the window size that you need 
-        driver.get(href)
-        time.sleep(5)
-        name = "".join(random.choice(string.lowercase) for i in range(8))
-        driver.save_screenshot('/tmp/screenshots/'+name+'.png')
-        driver.quit()
-        return '/tmp/screenshots/'+name+'.png';
+        filename = ""
+        try:
+            driver = webdriver.PhantomJS()
+            driver.set_window_size(1920, 1080) # set the window size that you need 
+            driver.get(href)
+            time.sleep(5)
+            name = "".join(random.choice(string.lowercase) for i in range(8))
+            driver.save_screenshot('/tmp/screenshots/'+name+'.png')
+            driver.quit()
+            filename = '/tmp/screenshots/'+name+'.png';
+        except:
+            pass
+        return filename;
     
     def getWHOIS(self,hostname):
         data = {}
-        data = whois.whois(hostname)
+        try:
+            data = whois.whois(hostname)
+        except:
+            pass
         return data
 
     def getIP(self,hostname):
