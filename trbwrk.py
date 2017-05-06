@@ -96,7 +96,7 @@ class trbwrk():
         return mail
     
     def doDeepCheck(self,mail):
-        mbd = mailBD.MailBD()
+        mbd = mailBD.MailBD(self)
         mail.Links = mbd.getLinks(mail.Body)
 
     def parseMails(self,server,port,emailaddr,password,folder):

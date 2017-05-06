@@ -7,6 +7,7 @@ import random
 import string
 import whois
 import dns.resolver
+import jsonpickle
 from email.header import decode_header
 from selenium import webdriver
 
@@ -54,6 +55,7 @@ class Hyperlink(object):
     Headers= {}
     Addresses=[]
     Screenshot=""
+    Locations =None
 
     def __str__(self):
         
@@ -182,9 +184,13 @@ class MailBD(object):
                             url.Screenshot = self.getScreen(url.Url)
                         url.Whois = self.getWHOIS(hostname)
                         url.Addresses =  self.getIP(hostname)
+                        url.Locations = []
+                        for ip in url.Addresses:
+                            url.Locations.append(self.getLocation(ip))
                         links.append(url)
             except:
                 print("Could not read links")
+        return links
 
     def getRedirects(self, href):
         history = []
@@ -246,3 +252,7 @@ class MailBD(object):
                 pass
 
         return addresses
+    
+    def getLocation(self,ip):
+        response = requests.get("http://ip-api.com/json/"+ ip)
+        return jsonpickle.decode(response.text)
