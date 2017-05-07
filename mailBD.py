@@ -8,6 +8,7 @@ import string
 import whois
 import dns.resolver
 import jsonpickle
+import os
 from email.header import decode_header
 from selenium import webdriver
 
@@ -28,6 +29,7 @@ class Sender():
 class File(object):
     Name = ""
     Blob = None
+    FullPath = ""
 
     def __str__(self):
         return "{0}: ".format(self.Name)
@@ -80,6 +82,7 @@ class MailBD(object):
 
     trbwrkInstance = None
 
+    failedHrefs = []
     def __init__(self,trbwrk):
         self.trbwrkInstance = trbwrk
 
@@ -93,7 +96,7 @@ class MailBD(object):
         got.Body = self.getBody(msg)
         got.Mailer = self.getHeader(msg,"X-Mailer")
         got.MessageID = self.getHeader(msg,"Message-Id")
-        got.Attachments = self.getAttachments(msg)
+        got.Attachments = self.getAttachments(msg,got,False)
         got.Server = self.getServer(msg)
         return got
 
@@ -121,7 +124,7 @@ class MailBD(object):
         body = body.replace("\n","")
         return body
 
-    def getAttachments(self,message,addBlob=False):
+    def getAttachments(self,message,messageObj, addBlob=False):
         payload = []
         if (message.is_multipart()):
             for part in message.walk():
@@ -137,6 +140,18 @@ class MailBD(object):
                         att.Name = name
                         if addBlob:
                             att.Blob = content
+                        
+                        if (self.trbwrkInstance.attachmentFolder != "" and messageObj.MessageID != ""):  
+                            folder = self.trbwrkInstance.attachmentFolder + "/" + messageObj.MessageID + "/"
+                            path = self.trbwrkInstance.attachmentFolder + "/" + messageObj.MessageID + "/" + part.get_filename()   
+                            if (os.path.isdir(folder) == False):
+                                os.mkdir(folder)
+                            if (self.trbwrkInstance.printHello):
+                                print("Storing attachment to " + path)
+                            fp = open(path, 'wb')		
+                            fp.write(content)		
+                            fp.close()
+                            att.FullPath = path
                         payload.append(att)
         else:
             body = message.get_payload(decode=True) 
@@ -180,22 +195,29 @@ class MailBD(object):
                     domain = urlparse.urlparse(href)
                     hostname = domain.hostname;
                     if links.count(url.Url) == 0:
-                        if (url.Status != 404):
+                        if (url.Status != 404 and self.trbwrkInstance.doScreenshots):
                             url.Screenshot = self.getScreen(url.Url)
-                        url.Whois = self.getWHOIS(hostname)
-                        url.Addresses =  self.getIP(hostname)
+                        if (self.trbwrkInstance.doWHOIS):
+                            url.Whois = self.getWHOIS(hostname)
+                        if (self.doNSLOOKUP):
+                            url.Addresses =  self.getIP(hostname)
                         url.Locations = []
                         for ip in url.Addresses:
                             url.Locations.append(self.getLocation(ip))
                         links.append(url)
-            except:
-                print("Could not read links")
+            except Exception,e:
+               print(e)
         return links
 
     def getRedirects(self, href):
         history = []
         try:
-            response = requests.get(href)
+            if (href in self.failedHrefs):
+                if (self.trbwrkInstance.printHello):
+                    print("Skipping hyperlink, failed often")
+                return []
+
+            response = requests.get(href,timeout=self.trbwrkInstance.timeout)
             initial = Hyperlink()
             initial.Url = response.url
             initial.Status = response.status_code
@@ -207,8 +229,9 @@ class MailBD(object):
                 l.Status = resp.status_code
                 l.Headers = self.getPlainHeaders(resp.headers)
                 history.append(l)
-        except: 
-            pass
+        except Exception,e:
+            self.failedHrefs.append(href)
+            print(e)
         return history
 
     def getPlainHeaders(self,headers):
@@ -228,31 +251,36 @@ class MailBD(object):
             driver.save_screenshot('/tmp/screenshots/'+name+'.png')
             driver.quit()
             filename = '/tmp/screenshots/'+name+'.png';
-        except:
-            pass
+        except Exception,e:
+            print(e)
         return filename;
     
     def getWHOIS(self,hostname):
         data = {}
         try:
             data = whois.whois(hostname)
-        except:
-            pass
+        except Exception,e:
+            print("Error while getting whois informations")
         return data
 
     def getIP(self,hostname):
         addresses = [];
-        records = ["A","AAAA"]
+        records = ["A"]
         for record in records:
+            if (hostname in self.failedHrefs):
+                if (self.trbwrkInstance.printHello):
+                    print("Skipping hyperlink, failed often")
+                return []
             try:
                 answers = dns.resolver.query(hostname, record)
                 for ip in answers:
                     addresses.append(str(ip.address))
-            except:
-                pass
+            except Exception, e:
+                self.trbwrkInstance.failedHrefs.append(hostname)
+                print (e)
 
         return addresses
     
     def getLocation(self,ip):
-        response = requests.get("http://ip-api.com/json/"+ ip)
+        response = requests.get("http://ip-api.com/json/"+ ip,timeout=self.trbwrkInstance.timeout)
         return jsonpickle.decode(response.text)

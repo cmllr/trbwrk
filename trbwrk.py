@@ -8,6 +8,7 @@ import sys
 import getopt
 import jsonpickle
 import imaplib
+import os
 
 # Units
 import mailBD
@@ -21,6 +22,11 @@ class trbwrk():
     printJSON = False # print output in json
     printHello = True # print version output
     deepCheck = False # crawl links, attachments?
+    doScreenshots = False # create screenshots?
+    targetFile = ""
+    doWHOIS = False # do whois queries
+    timeout = 1
+    attachmentFolder = "" # where to store attachments?
     def __init__(self):
         self.getCommandLine()
 
@@ -51,7 +57,14 @@ class trbwrk():
                 "honeypot",
                 "json",
                 "quiet",
-                "deepcheck"
+                "deepcheck",
+                "screenshosts",
+                "file=",
+                "whois",
+                "timeout=",
+                "nslookup",
+                "attachments=",
+                "analyze"
             ])
             self.parseCommandLine(options)
         except getopt.GetoptError:
@@ -68,6 +81,18 @@ class trbwrk():
                 self.printHello = False
             elif o in ("--deepcheck"):
                 self.deepCheck = True
+            elif o in ("--screenshots"):
+                self.doScreenshots = True
+            elif o in ("--file"):
+                self.targetFile = a
+            elif o in ("--attachments"):
+                self.attachmentFolder = a
+            elif o in ("--timeout"):
+                self.timeout = a
+            elif o in ("--whois"):
+                self.doWHOIS = true
+            elif o in ("--nslookup"):
+                self.doNSLOOKUP = true
             elif o in ("--help"):
                 self.printHelp()
 
@@ -77,11 +102,40 @@ class trbwrk():
         for o, a in options:
             if o in ("--raw"):
                 self.seenMail = self.parseMail(a);
+                if (self.printJSON and self.targetFile != ""):
+                    f = open(self.targetFile,"a")
+                    f.write(self.getJSON(self.seenMail,True))
+                    f.close()
             elif o in ("--honeypot"):
                 self.seenMails = self.parseMails(credentials.SERVER,credentials.PORT,credentials.EMAIL,credentials.PASSWORD,credentials.FOLDER)
-            
+            elif o in ("--analyze"):
+                self.analyzeResults(self.targetFile)
 
-        self.printResults()
+
+    def analyzeResults(self,path):
+        fp = open(path)
+        json = fp.read()
+        fp.close()
+        data = jsonpickle.decode(json)
+        # Filter properties
+        criteria = {}
+        blacklist = ["Body","trbwrk","Receiver","MessageID","Subject"]
+        for tuple in data:
+            for prop in tuple:
+                if (prop not in blacklist):
+                    if (prop not in criteria):
+                        criteria[prop] = {}
+                    # string values
+                    if (type(tuple[prop]) is unicode):
+                        name = tuple[prop]
+                        if (name != None):
+                            if (name not in criteria[prop]):
+                                criteria[prop][name] = 1
+                            else:
+                                criteria[prop][name] = criteria[prop][name] + 1
+               
+        
+        print(self.getJSON(criteria,True))
 
     def parseMail(self,path):
         fp = open(path)
@@ -108,7 +162,14 @@ class trbwrk():
         rv, data = mail.search(None, "ALL") 		
 
         mbd = mailBD.MailBD(self)
-        for num in data[0].split():		
+
+
+        if (self.printJSON and self.targetFile != ""):
+            if (os.path.isfile(self.targetFile)):
+                os.remove(self.targetFile)
+            
+            identifier = data[0].split()
+            for num in identifier:	
                 rv, data = mail.fetch(num, '(RFC822)')		
                 raw = data[0][1]		
                 got = mbd.getMail(raw)	
@@ -120,7 +181,12 @@ class trbwrk():
                     print(got)
                 
                 got.trbwrk = self.getVersion()
-                mails.append(got)		
+                mails.append(got)	
+                if (self.printJSON and self.targetFile != ""):
+                    f = open(self.targetFile,"w")
+                    f.write(self.getJSON(mails,True))
+                    f.close()
+                        
             
         return mails 
     def printResults(self):
@@ -134,8 +200,14 @@ class trbwrk():
                 for mail in self.seenMails:
                     self.output(mail)
     
-    def getJSON(self,what):
-        return jsonpickle.encode(what,unpicklable=False,make_refs=False)
+    def getJSON(self,what,pretty=False):
+        json =  jsonpickle.encode(what,unpicklable=False,make_refs=False)
+
+        if (pretty):
+            from subprocess import Popen, PIPE, STDOUT
+            p = Popen(['/usr/bin/jsonlint','-f'], stdout=PIPE, stdin=PIPE, stderr=PIPE)
+            json = p.communicate(input=json)[0]
+        return json
 
     def output(self,what):
         """
