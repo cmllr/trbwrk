@@ -117,9 +117,9 @@ class MailBD(object):
             for part in message.walk():
                 mime = part.get_content_type()	
                 if mime.find("text") != -1:	
-                    body = part.get_payload()
+                    body = part.get_payload(decode=True)
         else:
-            body = message.get_payload() 
+            body = message.get_payload(decode=True) 
         
         body = body.replace("\n","")
         return body

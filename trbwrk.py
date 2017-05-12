@@ -102,10 +102,13 @@ class trbwrk():
         for o, a in options:
             if o in ("--raw"):
                 self.seenMail = self.parseMail(a);
+                got = self.getJSON(self.seenMail,True);
                 if (self.printJSON and self.targetFile != ""):
-                    f = open(self.targetFile,"a")
-                    f.write(self.getJSON(self.seenMail,True))
+                    f = open(self.targetFile,"w+")
+                    f.write(got)
                     f.close()
+                elif (self.printJSON and self.targetFile == ""):
+                    print(got)
             elif o in ("--honeypot"):
                 self.seenMails = self.parseMails(credentials.SERVER,credentials.PORT,credentials.EMAIL,credentials.PASSWORD,credentials.FOLDER)
             elif o in ("--analyze"):
