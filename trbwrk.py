@@ -21,12 +21,14 @@ class trbwrk():
     seenMail = None # the analyzed mail
     printJSON = False # print output in json
     printHello = True # print version output
-    deepCheck = False # crawl links, attachments?
     doScreenshots = False # create screenshots?
+    screenshotFolder = ""
     targetFile = ""
     doWHOIS = False # do whois queries
     timeout = 1
     attachmentFolder = "" # where to store attachments?
+    doNSLOOKUP = False
+    doLinkVisit = False
     def __init__(self):
         self.getCommandLine()
 
@@ -57,17 +59,18 @@ class trbwrk():
                 "honeypot",
                 "json",
                 "quiet",
-                "deepcheck",
-                "screenshosts",
+                "screenshots=",
                 "file=",
                 "whois",
                 "timeout=",
                 "nslookup",
                 "attachments=",
-                "analyze"
+                "analyze",
+                "visitlinks"
             ])
             self.parseCommandLine(options)
         except getopt.GetoptError:
+            print("Use --help for more help")
             sys.exit(2)
     
     def parseCommandLine(self,options):
@@ -79,10 +82,12 @@ class trbwrk():
                 self.printJSON = True
             elif o in ("--quiet"):
                 self.printHello = False
-            elif o in ("--deepcheck"):
-                self.deepCheck = True
             elif o in ("--screenshots"):
                 self.doScreenshots = True
+                self.screenshotFolder = a
+                if os.path.isdir(a) == False:
+                    print("Screenshot folder does not exists")
+                    sys.exit(5)
             elif o in ("--file"):
                 self.targetFile = a
             elif o in ("--attachments"):
@@ -90,13 +95,15 @@ class trbwrk():
             elif o in ("--timeout"):
                 self.timeout = a
             elif o in ("--whois"):
-                self.doWHOIS = true
+                self.doWHOIS = True
             elif o in ("--nslookup"):
-                self.doNSLOOKUP = true
+                self.doNSLOOKUP = True
+            elif o in ("--visitlinks"):
+                self.doLinkVisit = True
             elif o in ("--help"):
                 self.printHelp()
 
-        if (self.printHello):
+        if (self.printHello and self.printJSON == False):
            print("trbwrk {0} © 2017 Christoph Müller <me@0fury.de>".format(self.getVersion()))
 
         for o, a in options:
@@ -109,52 +116,22 @@ class trbwrk():
                     f.close()
                 elif (self.printJSON and self.targetFile == ""):
                     print(got)
+                elif (self.printJSON == False and self.targetFile == ""):
+                    print(self.seenMail);
             elif o in ("--honeypot"):
                 self.seenMails = self.parseMails(credentials.SERVER,credentials.PORT,credentials.EMAIL,credentials.PASSWORD,credentials.FOLDER)
-            elif o in ("--analyze"):
-                self.analyzeResults(self.targetFile)
+            
 
-
-    def analyzeResults(self,path):
-        fp = open(path)
-        json = fp.read()
-        fp.close()
-        data = jsonpickle.decode(json)
-        # Filter properties
-        criteria = {}
-        blacklist = ["Body","trbwrk","Receiver","MessageID","Subject"]
-        for tuple in data:
-            for prop in tuple:
-                if (prop not in blacklist):
-                    if (prop not in criteria):
-                        criteria[prop] = {}
-                    # string values
-                    if (type(tuple[prop]) is unicode):
-                        name = tuple[prop]
-                        if (name != None):
-                            if (name not in criteria[prop]):
-                                criteria[prop][name] = 1
-                            else:
-                                criteria[prop][name] = criteria[prop][name] + 1
-               
-        
-        print(self.getJSON(criteria,True))
 
     def parseMail(self,path):
         fp = open(path)
         mbd = mailBD.MailBD(self)
         mail = mbd.getMail(fp.read())
         fp.close()
-        if self.printHello and self.deepCheck:
-            print("Performing deep check...")
-        if self.deepCheck:
-            self.doDeepCheck(mail)
-        mail.trbwrk = self.getVersion()
+        mail.Trbwrk = self.getVersion()
+        mail.Hostname = os.uname()[1]
         return mail
     
-    def doDeepCheck(self,mail):
-        mbd = mailBD.MailBD(self)
-        mail.Links = mbd.getLinks(mail.Body)
 
     def parseMails(self,server,port,emailaddr,password,folder):
         mails = []		
@@ -176,10 +153,6 @@ class trbwrk():
                 rv, data = mail.fetch(num, '(RFC822)')		
                 raw = data[0][1]		
                 got = mbd.getMail(raw)	
-                if self.printHello and self.deepCheck:
-                    print("Performing deep check...")
-                if self.deepCheck:
-                    self.doDeepCheck(got)
                 if (self.printHello):
                     print(got)
                 
@@ -192,16 +165,6 @@ class trbwrk():
                         
             
         return mails 
-    def printResults(self):
-        if self.seenMail != None:
-            self.output(self.seenMail)
-
-        if len(self.seenMails) > 0:
-            if self.printJSON:
-                self.output(self.seenMails)
-            else:
-                for mail in self.seenMails:
-                    self.output(mail)
     
     def getJSON(self,what,pretty=False):
         json =  jsonpickle.encode(what,unpicklable=False,make_refs=False)

@@ -8,7 +8,21 @@ The main target is the processing of the emails for statistic purposes.
 
 ## Usage
 
-missing.
+`trbwrk.py [options] [what]`
+
+|Option|Description|
+|-|-|
+|`--json`|The results will be printed in JSON format|
+|`--quiet`|No version information will be printed, will be set if `--json` is used|
+|`--screenshots path`|Will save screenshots from extracted links into the folder `path`. The folder must be existing, works only if `--visitlinks`  is set|
+|`--visitlinks`|Visit links to extract server headers and screenshots (if wanted)|
+|`--file file`|If set together with `--json`, the JSON will be stored into the given file|
+|`--attachments path`|Will save attachments into the given directory, which must be existing|
+|`--timeout seconds`|Sets the timeout for download activities|
+|`--whois`|Does whois queries. The Result is a text, because the TLD registrars don't use an standard format|
+|`--nslookup`|Does domain searches, also extracts hoster and location|
+
+
 
 ## License
 

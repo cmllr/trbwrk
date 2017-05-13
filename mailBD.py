@@ -9,6 +9,7 @@ import whois
 import dns.resolver
 import jsonpickle
 import os
+import sys
 from email.header import decode_header
 from selenium import webdriver
 
@@ -29,10 +30,13 @@ class Sender():
 class File(object):
     Name = ""
     Blob = None
+    Mime = ""
     FullPath = ""
 
     def __str__(self):
-        return "{0}: ".format(self.Name)
+        return "{0} ({1}): ".format(self.Name,self.Mime)
+
+    __repr__ = __str__
 
 class Mail(object):
     Subject=""
@@ -44,10 +48,11 @@ class Mail(object):
     MessageID=""
     Server=[]
     Links=[]
-    trbwrk=""
+    Trbwrk=""
+    Hostname=""
 
     def __str__(self):
-        response = "{0} => {1}: \"{2}\"".format(self.Sender,self.Receiver,self.Subject) 
+        response = "{0} => {1}: \"{2}\" ({3})".format(self.Sender,self.Receiver,self.Subject,self.Attachments) 
         return response
 
 class Hyperlink(object):
@@ -98,6 +103,7 @@ class MailBD(object):
         got.MessageID = self.getHeader(msg,"Message-Id")
         got.Attachments = self.getAttachments(msg,got,False)
         got.Server = self.getServer(msg)
+        got.Links = self.getLinks(got.Body)
         return got
 
     def getHeader(self,message,needle):
@@ -129,7 +135,6 @@ class MailBD(object):
         if (message.is_multipart()):
             for part in message.walk():
                 mime = part.get_content_type()
-                        
                 if part.get('Content-Disposition') is None:		
                     continue
                 if mime.find("text") == -1:	
@@ -138,6 +143,7 @@ class MailBD(object):
                     if (name != None):
                         att = File()
                         att.Name = name
+                        att.Mime = mime
                         if addBlob:
                             att.Blob = content
                         
@@ -155,6 +161,7 @@ class MailBD(object):
                         payload.append(att)
         else:
             body = message.get_payload(decode=True) 
+        
         return payload
 
     
@@ -182,31 +189,45 @@ class MailBD(object):
                 pass
         return results
 
-
+    def isLinkInList(self,list,href):
+        if (len(list) == 0):
+            return False
+        for link in list:
+            if (link.Url == href):
+                return True
+        return False
 
     def getLinks(self,body):
         links = []
         regex = re.compile(r"https?://[^ ^\"^\'^<]+")
         for match in re.findall(regex, body.replace("\n","").replace("\r","")):
             href = match;
-            try:
-                history = self.getRedirects(href)
-                for url in history:
-                    domain = urlparse.urlparse(href)
-                    hostname = domain.hostname;
-                    if links.count(url.Url) == 0:
-                        if (url.Status != 404 and self.trbwrkInstance.doScreenshots):
-                            url.Screenshot = self.getScreen(url.Url)
-                        if (self.trbwrkInstance.doWHOIS):
-                            url.Whois = self.getWHOIS(hostname)
-                        if (self.doNSLOOKUP):
-                            url.Addresses =  self.getIP(hostname)
-                        url.Locations = []
-                        for ip in url.Addresses:
-                            url.Locations.append(self.getLocation(ip))
-                        links.append(url)
-            except Exception,e:
-               print(e)
+            if (self.trbwrkInstance.doLinkVisit and self.isLinkInList(links,href) == False):
+                try:
+                    history = self.getRedirects(href)
+                    for url in history:
+                        domain = urlparse.urlparse(href)
+                        hostname = domain.hostname;
+                        if links.count(url.Url) == 0:
+                            if (url.Status != 404 and self.trbwrkInstance.doScreenshots):
+                                url.Screenshot = self.getScreen(url.Url)
+                            if (self.trbwrkInstance.doWHOIS):
+                                url.Whois = self.getWHOIS(hostname)
+                            if (self.trbwrkInstance.doNSLOOKUP):
+                                url.Addresses =  self.getIP(hostname)
+                                url.Locations = []
+                                for ip in url.Addresses:
+                                    url.Locations.append(self.getLocation(ip))
+                            links.append(url)
+                except Exception,e:
+                    print(e)
+            else:
+                if (self.isLinkInList(links,href) == False):
+                    l = Hyperlink()
+                    l.Url = href
+                    l.Status = -1
+                    l.Headers = []
+                    links.append(l)
         return links
 
     def getRedirects(self, href):
@@ -248,9 +269,9 @@ class MailBD(object):
             driver.get(href)
             time.sleep(5)
             name = "".join(random.choice(string.lowercase) for i in range(8))
-            driver.save_screenshot('/tmp/screenshots/'+name+'.png')
+            filename = os.path.join(self.trbwrkInstance.screenshotFolder,name + '.png')
+            driver.save_screenshot(filename)
             driver.quit()
-            filename = '/tmp/screenshots/'+name+'.png';
         except Exception,e:
             print(e)
         return filename;
