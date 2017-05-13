@@ -8,7 +8,7 @@ The main target is the processing of the emails for statistic purposes.
 
 ## Usage
 
-`trbwrk.py [options] [what]`
+`trbwrk.py [options]`
 
 |Option|Description|
 |-|-|
@@ -21,6 +21,9 @@ The main target is the processing of the emails for statistic purposes.
 |`--timeout seconds`|Sets the timeout for download activities|
 |`--whois`|Does whois queries. The Result is a text, because the TLD registrars don't use an standard format|
 |`--nslookup`|Does domain searches, also extracts hoster and location|
+|`--raw file`|Uses a raw dump of the email (including headers) to analyze it.|
+
+
 
 
 
