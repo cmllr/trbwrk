@@ -1,7 +1,7 @@
 import email
 import re
 import requests 
-import urlparse
+import urllib
 import time
 import random
 import string
@@ -111,7 +111,7 @@ class MailBD(object):
         response = ""
         try:        
             decode = decode_header(message[needle])[0]
-            response = unicode(decode[0])
+            response = decode[0]
         except(UnicodeDecodeError):
             response = message[needle] # in case of error -> return raw header instead of decoded them
         return response  
@@ -127,7 +127,7 @@ class MailBD(object):
         else:
             body = message.get_payload(decode=True) 
         
-        body = body.replace("\n","")
+        body = body.decode("utf-8").replace("\n","")
         return body
 
     def getAttachments(self,message,messageObj, addBlob=False):
@@ -219,8 +219,8 @@ class MailBD(object):
                                 for ip in url.Addresses:
                                     url.Locations.append(self.getLocation(ip))
                             links.append(url)
-                except Exception,e:
-                    print(e)
+                except Exception:
+                    pass
             else:
                 if (self.isLinkInList(links,href) == False):
                     l = Hyperlink()
@@ -250,9 +250,8 @@ class MailBD(object):
                 l.Status = resp.status_code
                 l.Headers = self.getPlainHeaders(resp.headers)
                 history.append(l)
-        except Exception,e:
+        except Exception:
             self.failedHrefs.append(href)
-            print(e)
         return history
 
     def getPlainHeaders(self,headers):
@@ -272,7 +271,7 @@ class MailBD(object):
             filename = os.path.join(self.trbwrkInstance.screenshotFolder,name + '.png')
             driver.save_screenshot(filename)
             driver.quit()
-        except Exception,e:
+        except Exception:
             print(e)
         return filename;
     
@@ -280,7 +279,7 @@ class MailBD(object):
         data = {}
         try:
             data = whois.whois(hostname)
-        except Exception,e:
+        except Exception:
             print("Error while getting whois informations")
         return data
 
@@ -296,9 +295,8 @@ class MailBD(object):
                 answers = dns.resolver.query(hostname, record)
                 for ip in answers:
                     addresses.append(str(ip.address))
-            except Exception, e:
+            except Exception:
                 self.trbwrkInstance.failedHrefs.append(hostname)
-                print (e)
 
         return addresses
     

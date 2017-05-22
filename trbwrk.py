@@ -3,7 +3,6 @@
 import time
 from termcolor import colored, cprint
 import json
-import credentials
 import sys
 import getopt
 import jsonpickle
@@ -39,7 +38,7 @@ class trbwrk():
         import subprocess
         from subprocess import check_output
         version = check_output(["/usr/bin/git", "describe","--always"])
-        return version.replace("\n","")
+        return version.decode("utf-8").replace("\n","")
     
     def printHelp(self):
         """
@@ -56,7 +55,6 @@ class trbwrk():
             options, args= getopt.getopt(args, 'abc:d:',[
                 "help",
                 "raw=",
-                "honeypot",
                 "json",
                 "quiet",
                 "screenshots=",
@@ -118,9 +116,7 @@ class trbwrk():
                     print(got)
                 elif (self.printJSON == False and self.targetFile == ""):
                     print(self.seenMail);
-            elif o in ("--honeypot"):
-                self.seenMails = self.parseMails(credentials.SERVER,credentials.PORT,credentials.EMAIL,credentials.PASSWORD,credentials.FOLDER)
-            
+        
 
 
     def parseMail(self,path):
@@ -133,46 +129,13 @@ class trbwrk():
         return mail
     
 
-    def parseMails(self,server,port,emailaddr,password,folder):
-        mails = []		
-        mail = imaplib.IMAP4_SSL(server,port)		
-        mail.login(emailaddr,password)		
-        mail.select(folder);		
-                
-        rv, data = mail.search(None, "ALL") 		
-
-        mbd = mailBD.MailBD(self)
-
-
-        if (self.printJSON and self.targetFile != ""):
-            if (os.path.isfile(self.targetFile)):
-                os.remove(self.targetFile)
-            
-            identifier = data[0].split()
-            for num in identifier:	
-                rv, data = mail.fetch(num, '(RFC822)')		
-                raw = data[0][1]		
-                got = mbd.getMail(raw)	
-                if (self.printHello):
-                    print(got)
-                
-                got.trbwrk = self.getVersion()
-                mails.append(got)	
-                if (self.printJSON and self.targetFile != ""):
-                    f = open(self.targetFile,"w")
-                    f.write(self.getJSON(mails,True))
-                    f.close()
-                        
-            
-        return mails 
-    
     def getJSON(self,what,pretty=False):
         json =  jsonpickle.encode(what,unpicklable=False,make_refs=False)
 
-        if (pretty):
-            from subprocess import Popen, PIPE, STDOUT
-            p = Popen(['/usr/bin/jsonlint','-f'], stdout=PIPE, stdin=PIPE, stderr=PIPE)
-            json = p.communicate(input=json)[0]
+        #if (pretty):
+        #    from subprocess import Popen, PIPE, STDOUT
+        #    p = Popen(['/usr/bin/jsonlint','-f'], stdout=PIPE, stdin=PIPE, stderr=PIPE)
+        #    json = p.communicate(input=json)[0]
         return json
 
     def output(self,what):
