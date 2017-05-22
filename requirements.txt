@@ -1,0 +1,7 @@
+termcolor==1.1.0
+python_whois==0.6.5
+requests==2.10.0
+jsonpickle==0.9.4
+selenium==3.4.1
+dnspython==1.15.0
+whois==0.7
