@@ -5,3 +5,4 @@ jsonpickle==0.9.4
 selenium==3.4.1
 dnspython==1.15.0
 whois==0.7
+demjson=2.2.4
