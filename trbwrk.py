@@ -132,7 +132,7 @@ class trbwrk():
     def getJSON(self,what,pretty=False):
         json =  jsonpickle.encode(what,unpicklable=False,make_refs=False)
 
-        if (pretty):
+        #if (pretty):
         #    from subprocess import Popen, PIPE, STDOUT
         #    p = Popen(['/usr/bin/jsonlint','-f'], stdout=PIPE, stdin=PIPE, stderr=PIPE)
         #    json = p.communicate(input=json)[0]
